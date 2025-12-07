@@ -6,6 +6,6 @@ from dotenv import load_dotenv
 
 agent = Agent('openai:gpt-5-mini')
 
-result = agent.run_sync("Write a poem about the sea.")
+result = agent.run_sync("Write a poem about the sea in the storm.")
 
 print(result)
