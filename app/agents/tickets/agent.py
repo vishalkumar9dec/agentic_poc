@@ -45,5 +45,5 @@ def get_all_tickets(ctx: RunContext) -> GetTicketsOutput:
 
 async def run_ticket_agent(user_input: str) -> CreateTicketOutput | GetTicketsOutput:
     """Run the ticket agent with the given user input."""
-    result = await ticket_agent.run_async(user_input)
+    result = await ticket_agent.run(user_input)
     return result.output

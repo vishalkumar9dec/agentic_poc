@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-from agents.tickets.agent import ticket_agent
+from agents.tickets.agent import run_ticket_agent
 
 
 router = APIRouter(prefix="/tickets_agent", tags=["tickets_agent"])
@@ -18,11 +18,5 @@ async def ticket_assistant_agent(body: NLQuery):
     - 'Create a ticket : title=Bug, desc-login fails, status=Pending_approval, requestor=vishal, operation=login_issue'
     - 'Show me all tickets'
     """
-
-    result = await ticket_agent.run(body.query)
-
-    # Return structured data along with AI response
-    return {
-        "data": result.output,
-        "ai_message": result.all_messages()
-    }
+    result = await run_ticket_agent(body.query)
+    return result
