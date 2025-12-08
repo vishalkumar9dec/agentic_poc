@@ -6,6 +6,7 @@ Run this with PYTHONPATH set:
 
 from dotenv import load_dotenv
 import uvicorn
+from starlette.middleware.cors import CORSMiddleware
 
 # Load environment variables (including OPENAI_API_KEY)
 load_dotenv()
@@ -15,6 +16,15 @@ from agents.tickets.agent import ticket_agent
 if __name__ == "__main__":
     # Convert the PydanticAI agent to a Starlette/FastAPI app
     app = ticket_agent.to_ag_ui()
+
+    # Add CORS middleware to allow frontend to connect
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["http://localhost:3000", "http://localhost:3001"],  # Frontend URLs
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     print("Starting AG-UI server for ticket agent on port 8001...")
     print("CopilotKit frontend can connect to: http://localhost:8001")
