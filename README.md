@@ -96,6 +96,22 @@ agentic_ai/
 - **Node.js 18+**
 - **OpenAI API Key**
 
+### ⚡ Fastest Way - One Command
+
+```bash
+./start_all.sh
+```
+
+This will:
+- ✅ Check all prerequisites
+- ✅ Start AG-UI backend (port 8001) in new Terminal window
+- ✅ Start Next.js frontend (port 3001) in new Terminal window
+- ✅ Open automatically
+
+Then visit: **http://localhost:3001**
+
+### 📋 Or Manual Setup
+
 ### 1. Clone and Setup Environment
 
 ```bash
@@ -125,9 +141,19 @@ pip install pydantic-ai[ag-ui] fastapi uvicorn sqlalchemy python-dotenv
 
 ### 3. Start the Servers
 
-You need to run **3 servers** in separate terminals:
+#### Option A: Use Launch Scripts (Recommended)
 
-#### Terminal 1: AG-UI Server (Port 8001)
+```bash
+# Terminal 1: Start backend
+./start_backend.sh
+
+# Terminal 2: Start frontend
+./start_frontend.sh
+```
+
+#### Option B: Manual Commands
+
+**Terminal 1: AG-UI Server (Port 8001)**
 
 ```bash
 cd /Users/vishalkumar/projects/agentic_ai/app
@@ -135,14 +161,14 @@ source ../venv/bin/activate
 PYTHONPATH=/Users/vishalkumar/projects/agentic_ai/app python agents/tickets/ag_ui_server.py
 ```
 
-**Expected output:**
-```
-Starting AG-UI server for ticket agent on port 8001...
-CopilotKit frontend can connect to: http://localhost:8001
-INFO:     Uvicorn running on http://0.0.0.0:8001 (Press CTRL+C to quit)
+**Terminal 2: Next.js Frontend (Port 3001)**
+
+```bash
+cd /Users/vishalkumar/projects/agentic_ai/ticket-frontend
+npm run dev
 ```
 
-#### Terminal 2: FastAPI Backend (Port 8000) - Optional
+**Terminal 3: FastAPI Backend (Port 8000) - Optional**
 
 ```bash
 cd /Users/vishalkumar/projects/agentic_ai
@@ -150,21 +176,7 @@ source venv/bin/activate
 uvicorn app.main:app --reload --port 8000
 ```
 
-**Note:** This is optional - only needed if you want to use the REST API endpoints directly.
-
-#### Terminal 3: Next.js Frontend (Port 3001)
-
-```bash
-cd /Users/vishalkumar/projects/agentic_ai/ticket-frontend
-npm run dev
-```
-
-**Expected output:**
-```
-▲ Next.js 16.0.7
-- Local:        http://localhost:3001
-✓ Ready in XXXms
-```
+**Note:** FastAPI backend is optional - only needed if you want to use the REST API endpoints directly.
 
 ### 4. Access the Application
 
