@@ -14,6 +14,7 @@ ticket_agent = Agent[None, CreateTicketOutput | GetTicketsOutput](
     )    
 )
 
+
 @ticket_agent.tool
 def create_ticket(ctx: RunContext, title: str, status: str, operation: str, requester: str) -> CreateTicketOutput:
     """Create a new ticket in the system."""
