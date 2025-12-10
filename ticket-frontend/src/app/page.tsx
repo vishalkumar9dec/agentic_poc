@@ -21,6 +21,14 @@ type FeatureView = "dashboard" | "tickets" | "finops" | "greenops";
 export default function Home() {
   const [currentView, setCurrentView] = useState<FeatureView>("dashboard");
   const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [formData, setFormData] = useState({
+    title: '',
+    status: 'Open',
+    operation: 'task',
+    requester: ''
+  });
 
   // Make tickets available to the AI
   useCopilotReadable({
@@ -50,64 +58,49 @@ export default function Home() {
     },
   });
 
-  // Action to create a ticket
+  // Action to open ticket creation form
   useCopilotAction({
-    name: "createTicket",
-    description: "Create a new ticket in the system",
-    parameters: [
-      {
-        name: "title",
-        type: "string",
-        description: "The title of the ticket",
-        required: true,
-      },
-      {
-        name: "status",
-        type: "string",
-        description: "The status of the ticket (e.g., Pending Approval, Open, In Progress, Completed, Closed)",
-        required: true,
-      },
-      {
-        name: "operation",
-        type: "string",
-        description: "The type of operation (e.g., bug_fix, feature, task, request_gitlab_access, documentation, enhancement)",
-        required: true,
-      },
-      {
-        name: "requester",
-        type: "string",
-        description: "The name of the person who requested the ticket",
-        required: true,
-      },
-    ],
-    handler: async ({ title, status, operation, requester }) => {
-      try {
-        const response = await fetch("http://localhost:8000/tickets", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ title, status, operation, requester }),
-        });
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
-        // Refresh tickets list
-        const ticketsResponse = await fetch("http://localhost:8000/tickets");
-        if (!ticketsResponse.ok) {
-          throw new Error(`HTTP error! status: ${ticketsResponse.status}`);
-        }
-        const updatedTickets = await ticketsResponse.json();
-        setTickets(updatedTickets);
-        // Navigate to tickets view
-        setCurrentView("tickets");
-        return { success: true, ticket: data };
-      } catch (error) {
-        return { success: false, error: String(error) };
-      }
+    name: "openCreateTicketForm",
+    description: "Open a form to create a new ticket. Use this when user asks to create a ticket.",
+    parameters: [],
+    handler: async () => {
+      setShowCreateForm(true);
+      return { success: true, message: "Opening ticket creation form..." };
     },
   });
+
+  // Handle form submission
+  const handleCreateTicket = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsCreating(true);
+    try {
+      const response = await fetch("http://localhost:8000/tickets", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      // Refresh tickets list
+      const ticketsResponse = await fetch("http://localhost:8000/tickets");
+      if (ticketsResponse.ok) {
+        const updatedTickets = await ticketsResponse.json();
+        setTickets(updatedTickets);
+      }
+      // Navigate to tickets view
+      setCurrentView("tickets");
+      setShowCreateForm(false);
+      setFormData({ title: '', status: 'Open', operation: 'task', requester: '' });
+    } catch (error) {
+      alert('Error creating ticket: ' + String(error));
+    } finally {
+      setIsCreating(false);
+    }
+  };
 
   const renderContent = () => {
     switch (currentView) {
@@ -248,14 +241,39 @@ export default function Home() {
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+      {/* Mode Comparison Banner */}
+      <div className="absolute top-4 left-4 z-50">
+        <div className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg shadow-lg p-4 max-w-sm">
+          <div className="flex items-start space-x-3">
+            <div className="flex-shrink-0">
+              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h3 className="font-bold text-sm mb-1">AI-Driven UI (Level 1)</h3>
+              <p className="text-xs opacity-90 mb-3">
+                AI controls which pre-built components to show. All UI code exists.
+              </p>
+              <a
+                href="/gen-ui"
+                className="inline-block px-3 py-1.5 bg-white text-blue-600 text-xs font-semibold rounded hover:bg-blue-50 transition-colors"
+              >
+                Try AI-Configured UI (Level 2) →
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <main className="flex-1 overflow-y-auto">
         {renderContent()}
       </main>
 
-      {/* AI Chat Sidebar */}
-      <div className="w-96 border-l border-gray-200 dark:border-gray-700 shadow-2xl flex flex-col">
-        {/* Voice Button */}
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+      {/* AI Chat Sidebar - Fixed Height with Internal Scrolling */}
+      <div className="w-96 border-l border-gray-200 dark:border-gray-700 shadow-2xl flex flex-col h-screen">
+        {/* Voice Button - Fixed at Top */}
+        <div className="flex-none p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
           <button
             disabled
             className="w-full px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-xl flex items-center justify-center space-x-2 opacity-50 cursor-not-allowed relative"
@@ -270,10 +288,10 @@ export default function Home() {
           </button>
         </div>
 
-        {/* Copilot Chat */}
-        <div className="flex-1">
+        {/* Copilot Chat - Scrollable Area */}
+        <div className="flex-1 overflow-hidden">
           <CopilotChat
-            className="h-full"
+            className="h-full overflow-y-auto"
             instructions={`You are Jarvis, an AI assistant for a comprehensive operations platform.
 
 Jarvis has three main features:
@@ -282,8 +300,8 @@ Jarvis has three main features:
    - Create and manage support tickets
    - Track ticket status and operations
    - View all tickets with AI assistance
-   - Use actions: getAllTickets() and createTicket() when users ask about tickets
-   - When creating tickets, automatically navigate users to the ticket view after creation
+   - IMPORTANT: When users ask to create a ticket, use the openCreateTicketForm() action to open a form
+   - Use getAllTickets() to retrieve tickets
 
 2. **FinOps** (Coming Soon):
    - Financial operations and cloud cost management
@@ -298,7 +316,7 @@ Jarvis has three main features:
 
 Help users navigate between features, create tickets, and understand what Jarvis offers. Be friendly, professional, and concise. When users ask about FinOps or GreenOps, let them know these features are coming soon.
 
-IMPORTANT: You can create and retrieve tickets directly through chat without users having to click buttons. Just ask for the necessary details and use the available actions.`}
+IMPORTANT: When users ask to create a ticket, ALWAYS use openCreateTicketForm() action to open the form.`}
             labels={{
               title: "Jarvis Assistant",
               initial: "Hi! I'm Jarvis, your AI operations assistant. I can help you with:\n\n• Create & view tickets (just ask me!)\n• Learn about FinOps & GreenOps (coming soon)\n• Navigate between features\n\nWhat would you like to do?",
@@ -306,6 +324,111 @@ IMPORTANT: You can create and retrieve tickets directly through chat without use
           />
         </div>
       </div>
+
+      {/* Create Ticket Form Modal */}
+      {showCreateForm && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-scale-in border border-gray-200 dark:border-gray-800">
+            <div className="bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-lg">
+                    <span className="text-2xl">🎫</span>
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-white">Create New Ticket</h2>
+                    <p className="text-white/80 text-sm">Fill in the details below</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowCreateForm(false)}
+                  className="text-white hover:bg-white/20 rounded-xl p-2 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <form onSubmit={handleCreateTicket} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Title</label>
+                <input
+                  type="text"
+                  required
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-purple-500 text-gray-900 dark:text-white font-medium"
+                  placeholder="e.g., Fix login timeout issue"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Status</label>
+                  <select
+                    required
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-purple-500 text-gray-900 dark:text-white font-medium"
+                  >
+                    <option value="Open">Open</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Pending Approval">Pending Approval</option>
+                    <option value="Completed">Completed</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Type</label>
+                  <select
+                    required
+                    value={formData.operation}
+                    onChange={(e) => setFormData({ ...formData, operation: e.target.value })}
+                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-purple-500 text-gray-900 dark:text-white font-medium"
+                  >
+                    <option value="bug_fix">Bug Fix</option>
+                    <option value="feature">Feature</option>
+                    <option value="task">Task</option>
+                    <option value="request_gitlab_access">GitLab Access</option>
+                    <option value="documentation">Documentation</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Requester</label>
+                <input
+                  type="text"
+                  required
+                  value={formData.requester}
+                  onChange={(e) => setFormData({ ...formData, requester: e.target.value })}
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-purple-500 text-gray-900 dark:text-white font-medium"
+                  placeholder="Your name"
+                />
+              </div>
+
+              <div className="flex space-x-3 pt-4">
+                <button
+                  type="submit"
+                  disabled={isCreating}
+                  className="flex-1 px-6 py-4 bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 text-white font-bold rounded-xl shadow-lg shadow-purple-500/30 hover:shadow-xl transition-all duration-300 hover:scale-105 disabled:opacity-50"
+                >
+                  {isCreating ? 'Creating...' : 'Create Ticket'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowCreateForm(false)}
+                  className="px-6 py-4 bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold rounded-xl hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
