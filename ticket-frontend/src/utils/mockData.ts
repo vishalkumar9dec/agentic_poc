@@ -72,7 +72,7 @@ export const products: Product[] = [
   },
 ];
 
-// Favorite Items Data
+// Favorite Items Data (Default favorites)
 export const favoriteItems: FavoriteItem[] = [
   {
     id: 'cost-explorer',
@@ -91,6 +91,46 @@ export const favoriteItems: FavoriteItem[] = [
     name: 'Deploy Status',
     icon: 'zap',
     iconColor: 'from-yellow-500 to-orange-600',
+  },
+];
+
+// All available items that can be favorited
+export const availableFavorites: FavoriteItem[] = [
+  {
+    id: 'cost-explorer',
+    name: 'Cost Explorer',
+    icon: 'credit-card',
+    iconColor: 'from-green-500 to-emerald-600',
+  },
+  {
+    id: 'carbon-footprint',
+    name: 'Carbon Footprint',
+    icon: 'leaf',
+    iconColor: 'from-green-500 to-teal-600',
+  },
+  {
+    id: 'deploy-status',
+    name: 'Deploy Status',
+    icon: 'zap',
+    iconColor: 'from-yellow-500 to-orange-600',
+  },
+  {
+    id: 'ticket-dashboard',
+    name: 'Ticket Dashboard',
+    icon: 'ticket',
+    iconColor: 'from-blue-500 to-purple-600',
+  },
+  {
+    id: 'budget-alerts',
+    name: 'Budget Alerts',
+    icon: 'credit-card',
+    iconColor: 'from-red-500 to-orange-600',
+  },
+  {
+    id: 'team-activity',
+    name: 'Team Activity',
+    icon: 'zap',
+    iconColor: 'from-purple-500 to-pink-600',
   },
 ];
 
