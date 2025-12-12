@@ -11,6 +11,7 @@ import { useUserState } from "@/hooks/useUserState";
 import WelcomeModal from "@/components/dashboard/WelcomeModal";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import MetricsGrid from "@/components/dashboard/MetricsGrid";
+import FavoritesSection from "@/components/dashboard/FavoritesSection";
 
 interface Ticket {
   id: number;
@@ -136,6 +137,9 @@ export default function Home() {
           <div className="max-w-7xl mx-auto p-8">
             {/* Phase 2: Metrics Grid */}
             <MetricsGrid />
+
+            {/* Phase 3: Favorites Section */}
+            <FavoritesSection className="mb-8" />
 
             {/* Features Grid */}
             <div className="grid md:grid-cols-3 gap-8">
