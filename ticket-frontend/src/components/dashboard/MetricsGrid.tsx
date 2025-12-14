@@ -3,7 +3,25 @@
 import MetricCard from './MetricCard';
 import { mockMetrics } from '@/utils/mockData';
 
-export default function MetricsGrid() {
+interface Ticket {
+  id: number;
+  title: string;
+  status: string;
+  operation: string;
+  requester: string;
+}
+
+interface MetricsGridProps {
+  tickets?: Ticket[];
+}
+
+export default function MetricsGrid({ tickets = [] }: MetricsGridProps) {
+  // Calculate real ticket metrics
+  const activeTicketsCount = tickets.length;
+  const highPriorityCount = tickets.filter(
+    t => t.status === 'In Progress' || t.status === 'Pending Approval'
+  ).length;
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
       {/* Pending Approvals */}
@@ -24,11 +42,11 @@ export default function MetricsGrid() {
         iconColor="bg-orange-500/20 text-orange-400"
       />
 
-      {/* Active Tickets */}
+      {/* Active Tickets - Now using real data */}
       <MetricCard
         title="ACTIVE TICKETS"
-        value={mockMetrics.activeTickets.count}
-        subtitle={`${mockMetrics.activeTickets.highPriority} high priority`}
+        value={activeTicketsCount}
+        subtitle={highPriorityCount > 0 ? `${highPriorityCount} high priority` : 'All up to date'}
         icon={
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path

@@ -12,6 +12,9 @@ import WelcomeModal from "@/components/dashboard/WelcomeModal";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import MetricsGrid from "@/components/dashboard/MetricsGrid";
 import FavoritesSection from "@/components/dashboard/FavoritesSection";
+import ActivityTimeline from "@/components/dashboard/ActivityTimeline";
+import ProductsGrid from "@/components/dashboard/ProductsGrid";
+import CustomizeDashboardModal from "@/components/dashboard/CustomizeDashboardModal";
 
 interface Ticket {
   id: number;
@@ -36,8 +39,9 @@ export default function Home() {
   });
 
   // Phase 1: User State Management
-  const { userState, isLoading, setUserName } = useUserState();
+  const { userState, isLoading, setUserName, updateDashboardLayout } = useUserState();
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [showCustomizeModal, setShowCustomizeModal] = useState(false);
 
   // Show welcome modal if user has no name
   useEffect(() => {
@@ -135,96 +139,23 @@ export default function Home() {
       default:
         return (
           <div className="max-w-7xl mx-auto p-8">
-            {/* Phase 2: Metrics Grid */}
-            <MetricsGrid />
+            {/* Phase 3: Metrics Grid */}
+            {userState.dashboardLayout.metricsVisible && (
+              <MetricsGrid tickets={tickets} />
+            )}
 
-            {/* Phase 3: Favorites Section */}
-            <FavoritesSection className="mb-8" />
+            {/* Phase 4 & 5: Two-Column Layout - Favorites + Activity */}
+            {(userState.dashboardLayout.favoritesVisible || userState.dashboardLayout.activityVisible) && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                {userState.dashboardLayout.favoritesVisible && <FavoritesSection />}
+                {userState.dashboardLayout.activityVisible && <ActivityTimeline />}
+              </div>
+            )}
 
-            {/* Features Grid */}
-            <div className="grid md:grid-cols-3 gap-8">
-              {/* FinOps Card */}
-              <button
-                onClick={() => setCurrentView("finops")}
-                className="group bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 border border-gray-200 dark:border-gray-700 hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 text-left relative overflow-hidden"
-              >
-                <div className="absolute top-4 right-4">
-                  <span className="px-3 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-300 text-xs font-bold rounded-full">
-                    Coming Soon
-                  </span>
-                </div>
-                <div className="mb-6">
-                  <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                    <span className="text-4xl">💰</span>
-                  </div>
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                    FinOps
-                  </h2>
-                  <p className="text-gray-600 dark:text-gray-400">
-                    Financial operations, cloud cost management, and budget optimization
-                  </p>
-                </div>
-                <div className="flex items-center text-green-600 dark:text-green-400 font-semibold">
-                  <span>Preview</span>
-                  <svg className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </div>
-              </button>
-
-              {/* GreenOps Card */}
-              <button
-                onClick={() => setCurrentView("greenops")}
-                className="group bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 border border-gray-200 dark:border-gray-700 hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 text-left relative overflow-hidden"
-              >
-                <div className="absolute top-4 right-4">
-                  <span className="px-3 py-1 bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-300 text-xs font-bold rounded-full">
-                    Coming Soon
-                  </span>
-                </div>
-                <div className="mb-6">
-                  <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                    <span className="text-4xl">🌱</span>
-                  </div>
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                    GreenOps
-                  </h2>
-                  <p className="text-gray-600 dark:text-gray-400">
-                    Sustainable operations, carbon footprint tracking, and energy optimization
-                  </p>
-                </div>
-                <div className="flex items-center text-emerald-600 dark:text-emerald-400 font-semibold">
-                  <span>Preview</span>
-                  <svg className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </div>
-              </button>
-
-              {/* Ticket Management Card */}
-              <button
-                onClick={() => setCurrentView("tickets")}
-                className="group bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 border border-gray-200 dark:border-gray-700 hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 text-left"
-              >
-                <div className="mb-6">
-                  <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                    <span className="text-4xl">🎫</span>
-                  </div>
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                    Ticket Management
-                  </h2>
-                  <p className="text-gray-600 dark:text-gray-400">
-                    Create, track, and manage support tickets with AI assistance
-                  </p>
-                </div>
-                <div className="flex items-center text-blue-600 dark:text-blue-400 font-semibold">
-                  <span>Launch</span>
-                  <svg className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </div>
-              </button>
-            </div>
+            {/* Phase 6: Product Cards / Features Grid */}
+            {userState.dashboardLayout.productsVisible && (
+              <ProductsGrid onNavigate={setCurrentView} className="mb-8" />
+            )}
 
             {/* Features Info */}
             <div className="mt-12 p-6 bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50 dark:from-blue-900/20 dark:via-purple-900/20 dark:to-pink-900/20 rounded-2xl border border-blue-200 dark:border-blue-800">
@@ -261,7 +192,7 @@ export default function Home() {
         <DashboardLayout
           userName={userState.name || 'User'}
           userRole={userState.role}
-          onCustomizeDashboard={() => alert('Customize Dashboard feature coming soon!')}
+          onCustomizeDashboard={() => setShowCustomizeModal(true)}
         >
           {renderContent()}
         </DashboardLayout>
@@ -431,6 +362,14 @@ IMPORTANT: When users ask to create a ticket, ALWAYS use openCreateTicketForm() 
       {showWelcomeModal && (
         <WelcomeModal onComplete={handleWelcomeComplete} />
       )}
+
+      {/* Phase 7: Customize Dashboard Modal */}
+      <CustomizeDashboardModal
+        isOpen={showCustomizeModal}
+        onClose={() => setShowCustomizeModal(false)}
+        currentLayout={userState.dashboardLayout}
+        onSave={updateDashboardLayout}
+      />
     </div>
   );
 }

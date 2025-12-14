@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import FavoriteCard from './FavoriteCard';
 import { availableFavorites } from '@/utils/mockData';
 import { useFavorites } from '@/hooks/useFavorites';
@@ -31,6 +31,18 @@ export default function FavoritesSection({ className = '' }: FavoritesSectionPro
 
   // Get available items that aren't already favorited
   const availableToAdd = availableFavorites.filter(item => !isFavorited(item.id));
+
+  // Handle ESC key to close modal
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && showAddModal) {
+        setShowAddModal(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [showAddModal]);
 
   if (isLoading) {
     return (
