@@ -3,10 +3,18 @@
 import { CopilotChat } from "@copilotkit/react-ui";
 import "@copilotkit/react-ui/styles.css";
 import { useCopilotAction, useCopilotReadable } from "@copilotkit/react-core";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import TicketManagement from "@/features/tickets/TicketManagement";
 import FinOps from "@/features/finops/FinOps";
 import GreenOps from "@/features/greenops/GreenOps";
+import { useUserState } from "@/hooks/useUserState";
+import WelcomeModal from "@/components/dashboard/WelcomeModal";
+import DashboardLayout from "@/components/dashboard/DashboardLayout";
+import MetricsGrid from "@/components/dashboard/MetricsGrid";
+import FavoritesSection from "@/components/dashboard/FavoritesSection";
+import ActivityTimeline from "@/components/dashboard/ActivityTimeline";
+import ProductsGrid from "@/components/dashboard/ProductsGrid";
+import CustomizeDashboardModal from "@/components/dashboard/CustomizeDashboardModal";
 
 interface Ticket {
   id: number;
@@ -29,6 +37,24 @@ export default function Home() {
     operation: 'task',
     requester: ''
   });
+
+  // Phase 1: User State Management
+  const { userState, isLoading, setUserName, updateDashboardLayout } = useUserState();
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [showCustomizeModal, setShowCustomizeModal] = useState(false);
+
+  // Show welcome modal if user has no name
+  useEffect(() => {
+    if (!isLoading && !userState.name) {
+      setShowWelcomeModal(true);
+    }
+  }, [isLoading, userState.name]);
+
+  // Handle welcome modal completion
+  const handleWelcomeComplete = (name: string) => {
+    setUserName(name);
+    setShowWelcomeModal(false);
+  };
 
   // Make tickets available to the AI
   useCopilotReadable({
@@ -113,103 +139,23 @@ export default function Home() {
       default:
         return (
           <div className="max-w-7xl mx-auto p-8">
-            {/* Header */}
-            <div className="mb-12 text-center">
-              <h1 className="text-6xl font-bold mb-4 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-                Jarvis
-              </h1>
-              <p className="text-2xl text-gray-600 dark:text-gray-400 font-medium">
-                Everything at one place
-              </p>
-              <p className="text-gray-500 dark:text-gray-500 mt-2">
-                AI-powered operations platform for modern teams
-              </p>
-            </div>
+            {/* Phase 3: Metrics Grid */}
+            {userState.dashboardLayout.metricsVisible && (
+              <MetricsGrid tickets={tickets} />
+            )}
 
-            {/* Features Grid */}
-            <div className="grid md:grid-cols-3 gap-8">
-              {/* FinOps Card */}
-              <button
-                onClick={() => setCurrentView("finops")}
-                className="group bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 border border-gray-200 dark:border-gray-700 hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 text-left relative overflow-hidden"
-              >
-                <div className="absolute top-4 right-4">
-                  <span className="px-3 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-300 text-xs font-bold rounded-full">
-                    Coming Soon
-                  </span>
-                </div>
-                <div className="mb-6">
-                  <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                    <span className="text-4xl">💰</span>
-                  </div>
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                    FinOps
-                  </h2>
-                  <p className="text-gray-600 dark:text-gray-400">
-                    Financial operations, cloud cost management, and budget optimization
-                  </p>
-                </div>
-                <div className="flex items-center text-green-600 dark:text-green-400 font-semibold">
-                  <span>Preview</span>
-                  <svg className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </div>
-              </button>
+            {/* Phase 4 & 5: Two-Column Layout - Favorites + Activity */}
+            {(userState.dashboardLayout.favoritesVisible || userState.dashboardLayout.activityVisible) && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                {userState.dashboardLayout.favoritesVisible && <FavoritesSection />}
+                {userState.dashboardLayout.activityVisible && <ActivityTimeline />}
+              </div>
+            )}
 
-              {/* GreenOps Card */}
-              <button
-                onClick={() => setCurrentView("greenops")}
-                className="group bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 border border-gray-200 dark:border-gray-700 hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 text-left relative overflow-hidden"
-              >
-                <div className="absolute top-4 right-4">
-                  <span className="px-3 py-1 bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-300 text-xs font-bold rounded-full">
-                    Coming Soon
-                  </span>
-                </div>
-                <div className="mb-6">
-                  <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                    <span className="text-4xl">🌱</span>
-                  </div>
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                    GreenOps
-                  </h2>
-                  <p className="text-gray-600 dark:text-gray-400">
-                    Sustainable operations, carbon footprint tracking, and energy optimization
-                  </p>
-                </div>
-                <div className="flex items-center text-emerald-600 dark:text-emerald-400 font-semibold">
-                  <span>Preview</span>
-                  <svg className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </div>
-              </button>
-
-              {/* Ticket Management Card */}
-              <button
-                onClick={() => setCurrentView("tickets")}
-                className="group bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 border border-gray-200 dark:border-gray-700 hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 text-left"
-              >
-                <div className="mb-6">
-                  <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                    <span className="text-4xl">🎫</span>
-                  </div>
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                    Ticket Management
-                  </h2>
-                  <p className="text-gray-600 dark:text-gray-400">
-                    Create, track, and manage support tickets with AI assistance
-                  </p>
-                </div>
-                <div className="flex items-center text-blue-600 dark:text-blue-400 font-semibold">
-                  <span>Launch</span>
-                  <svg className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </div>
-              </button>
-            </div>
+            {/* Phase 6: Product Cards / Features Grid */}
+            {userState.dashboardLayout.productsVisible && (
+              <ProductsGrid onNavigate={setCurrentView} className="mb-8" />
+            )}
 
             {/* Features Info */}
             <div className="mt-12 p-6 bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50 dark:from-blue-900/20 dark:via-purple-900/20 dark:to-pink-900/20 rounded-2xl border border-blue-200 dark:border-blue-800">
@@ -240,38 +186,20 @@ export default function Home() {
   };
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
-      {/* Mode Comparison Banner */}
-      <div className="absolute top-4 left-4 z-50">
-        <div className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg shadow-lg p-4 max-w-sm">
-          <div className="flex items-start space-x-3">
-            <div className="flex-shrink-0">
-              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="flex-1">
-              <h3 className="font-bold text-sm mb-1">AI-Driven UI (Level 1)</h3>
-              <p className="text-xs opacity-90 mb-3">
-                AI controls which pre-built components to show. All UI code exists.
-              </p>
-              <a
-                href="/gen-ui"
-                className="inline-block px-3 py-1.5 bg-white text-blue-600 text-xs font-semibold rounded hover:bg-blue-50 transition-colors"
-              >
-                Try AI-Configured UI (Level 2) →
-              </a>
-            </div>
-          </div>
-        </div>
+    <div className="flex h-screen bg-gray-900">
+      {/* Phase 2: Dashboard Layout with Sidebar and TopBar */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <DashboardLayout
+          userName={userState.name || 'User'}
+          userRole={userState.role}
+          onCustomizeDashboard={() => setShowCustomizeModal(true)}
+        >
+          {renderContent()}
+        </DashboardLayout>
       </div>
 
-      <main className="flex-1 overflow-y-auto">
-        {renderContent()}
-      </main>
-
-      {/* AI Chat Sidebar - Fixed Height with Internal Scrolling */}
-      <div className="w-96 border-l border-gray-200 dark:border-gray-700 shadow-2xl flex flex-col h-screen">
+      {/* AI Chat Sidebar - Essential for Agentic AI interaction */}
+      <div className="w-96 border-l border-gray-700 shadow-2xl flex flex-col h-screen bg-gray-900">
         {/* Voice Button - Fixed at Top */}
         <div className="flex-none p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
           <button
@@ -429,6 +357,19 @@ IMPORTANT: When users ask to create a ticket, ALWAYS use openCreateTicketForm() 
           </div>
         </div>
       )}
+
+      {/* Phase 1: Welcome Modal */}
+      {showWelcomeModal && (
+        <WelcomeModal onComplete={handleWelcomeComplete} />
+      )}
+
+      {/* Phase 7: Customize Dashboard Modal */}
+      <CustomizeDashboardModal
+        isOpen={showCustomizeModal}
+        onClose={() => setShowCustomizeModal(false)}
+        currentLayout={userState.dashboardLayout}
+        onSave={updateDashboardLayout}
+      />
     </div>
   );
 }
