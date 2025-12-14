@@ -6,12 +6,14 @@ import Button from '@/components/ui/Button';
 interface TopBarProps {
   userName: string;
   userRole: string;
+  currentView?: string;
   onCustomizeDashboard?: () => void;
 }
 
 export default function TopBar({
   userName,
   userRole,
+  currentView,
   onCustomizeDashboard,
 }: TopBarProps) {
   return (
@@ -36,12 +38,14 @@ export default function TopBar({
             Verified Access: {userRole}
           </Badge>
 
-          {/* Welcome Message */}
-          <div>
-            <h1 className="text-3xl font-bold text-white">
-              Welcome back, {userName}
-            </h1>
-          </div>
+          {/* Welcome Message - Only show on dashboard */}
+          {currentView === "dashboard" && (
+            <div>
+              <h1 className="text-3xl font-bold text-white">
+                Welcome back, {userName}
+              </h1>
+            </div>
+          )}
         </div>
 
         {/* Right Side: Customize Button + Notification */}

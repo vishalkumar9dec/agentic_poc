@@ -6,6 +6,7 @@ load_dotenv()
 
 from features.tickets.router import router as tickets_router
 from agents.tickets.router import router as tickets_agent_router
+from features.finops.router import router as finops_router
 
 
 app = FastAPI()
@@ -21,3 +22,4 @@ app.add_middleware(
 
 app.include_router(tickets_router)
 app.include_router(tickets_agent_router)
+app.include_router(finops_router)

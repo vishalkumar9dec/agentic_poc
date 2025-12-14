@@ -15,6 +15,8 @@ import FavoritesSection from "@/components/dashboard/FavoritesSection";
 import ActivityTimeline from "@/components/dashboard/ActivityTimeline";
 import ProductsGrid from "@/components/dashboard/ProductsGrid";
 import CustomizeDashboardModal from "@/components/dashboard/CustomizeDashboardModal";
+import CostSummaryCard from "@/components/finops/CostSummaryCard";
+import ProviderComparisonCard from "@/components/finops/ProviderComparisonCard";
 
 interface Ticket {
   id: number;
@@ -42,6 +44,20 @@ export default function Home() {
   const { userState, isLoading, setUserName, updateDashboardLayout } = useUserState();
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [showCustomizeModal, setShowCustomizeModal] = useState(false);
+
+  // FinOps filter state
+  const [finopsFilters, setFinopsFilters] = useState<{
+    selectedProviders: string[];
+    selectedServices: string[];
+    preset?: string;
+    chartType?: "area" | "bar" | "line";
+    viewMode?: "chart" | "table";
+  }>({
+    selectedProviders: ["AWS", "Azure", "GCP"],
+    selectedServices: [],
+    chartType: "area",
+    viewMode: "chart"
+  });
 
   // Show welcome modal if user has no name
   useEffect(() => {
@@ -95,6 +111,310 @@ export default function Home() {
     },
   });
 
+  // Action to navigate to FinOps
+  useCopilotAction({
+    name: "navigateToFinOps",
+    description: "Navigate to the FinOps dashboard for cloud cost management. Use this when user asks about costs, cloud spending, FinOps, or wants to see the FinOps page.",
+    parameters: [],
+    handler: async () => {
+      setCurrentView("finops");
+      return {
+        success: true,
+        message: "Navigating to FinOps dashboard... You can now ask me questions like:\n• Show me AWS costs\n• What were my costs last month?\n• Compare costs across providers\n• Which service is most expensive?"
+      };
+    },
+  });
+
+  // Action to show cost summary with generative UI
+  useCopilotAction({
+    name: "showCostSummary",
+    description: "Display a visual cost summary card for a specific provider or all providers combined. Use this when user asks to see costs, breakdown, or spending for a provider.",
+    parameters: [
+      {
+        name: "provider",
+        type: "string",
+        description: "Cloud provider name (AWS, Azure, or GCP). Leave empty for combined total.",
+        required: false,
+      },
+      {
+        name: "period",
+        type: "string",
+        description: "Time period description (e.g., 'November 2025', 'last month')",
+        required: false,
+      },
+    ],
+    handler: async ({ provider, period }) => {
+      try {
+        // Fetch cost data from backend
+        const preset = "last_month"; // Could be dynamic based on period
+        const response = await fetch(`http://localhost:8000/api/finops/costs/summary?preset=${preset}`);
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const summary = await response.json();
+
+        // If specific provider requested, filter data
+        if (provider) {
+          const providerUpper = provider.toUpperCase();
+
+          // Try to find provider cost with different casing (backend might use title case)
+          const providerCost = summary.by_provider[providerUpper] ||
+                               summary.by_provider[provider] ||
+                               summary.by_provider[provider.charAt(0).toUpperCase() + provider.slice(1).toLowerCase()] ||
+                               0;
+
+          const providerServices = summary.top_services.filter((s: any) => {
+            // Check if service belongs to this provider
+            if (providerUpper === "AWS" && ["EC2", "S3", "Lambda"].includes(s.name)) return true;
+            if (providerUpper === "AZURE" && ["Virtual Machines", "Blob Storage", "Azure Functions"].includes(s.name)) return true;
+            if (providerUpper === "GCP" && ["Compute Engine", "Cloud Storage", "Cloud Functions"].includes(s.name)) return true;
+            return false;
+          });
+
+          // Calculate total from services if provider cost is 0
+          const calculatedTotal = providerServices.reduce((sum: number, s: any) => sum + s.cost, 0);
+          const finalCost = providerCost > 0 ? providerCost : calculatedTotal;
+
+          return {
+            success: true,
+            provider: providerUpper,
+            totalCost: finalCost,
+            breakdown: providerServices,
+            period: period || "last month"
+          };
+        }
+
+        // Return combined summary
+        return {
+          success: true,
+          totalCost: summary.total_cost,
+          breakdown: summary.top_services,
+          period: period || "last month"
+        };
+      } catch (error) {
+        return { success: false, error: String(error) };
+      }
+    },
+    render: ({ status, result }) => {
+      if (status === "complete" && result.success) {
+        return (
+          <CostSummaryCard
+            provider={result.provider}
+            totalCost={result.totalCost}
+            breakdown={result.breakdown}
+            period={result.period}
+          />
+        );
+      }
+      return null;
+    },
+  });
+
+  // Action to compare providers with generative UI
+  useCopilotAction({
+    name: "compareProviders",
+    description: "Display a visual comparison of costs across cloud providers (AWS, Azure, GCP). Use this when user wants to compare or see all providers.",
+    parameters: [
+      {
+        name: "period",
+        type: "string",
+        description: "Time period description (e.g., 'November 2025', 'last month')",
+        required: false,
+      },
+    ],
+    handler: async ({ period }) => {
+      try {
+        const preset = "last_month";
+        const response = await fetch(`http://localhost:8000/api/finops/costs/summary?preset=${preset}`);
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const summary = await response.json();
+
+        // Transform data for provider comparison
+        const providers = Object.entries(summary.by_provider).map(([name, cost]) => ({
+          name,
+          cost: cost as number,
+          percentage: ((cost as number) / summary.total_cost) * 100
+        }));
+
+        return {
+          success: true,
+          providers,
+          totalCost: summary.total_cost,
+          period: period || "last month"
+        };
+      } catch (error) {
+        return { success: false, error: String(error) };
+      }
+    },
+    render: ({ status, result }) => {
+      if (status === "complete" && result.success) {
+        return (
+          <ProviderComparisonCard
+            providers={result.providers}
+            totalCost={result.totalCost}
+            period={result.period}
+          />
+        );
+      }
+      return null;
+    },
+  });
+
+  // Action to query FinOps costs (for text responses)
+  useCopilotAction({
+    name: "queryFinOpsCosts",
+    description: "Query cloud costs using natural language for detailed text analysis. Use this for specific questions that need detailed explanations.",
+    parameters: [
+      {
+        name: "query",
+        type: "string",
+        description: "Natural language query about costs (e.g., 'show me AWS costs last month', 'compare providers', 'most expensive service')",
+        required: true,
+      },
+    ],
+    handler: async ({ query }) => {
+      try {
+        // Navigate to FinOps first if not already there
+        setCurrentView("finops");
+
+        // Call the AI query endpoint
+        const response = await fetch("http://localhost:8000/api/finops/ai/query", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ query }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        // Auto-update dashboard filters based on query AND AI response
+        const queryLower = query.toLowerCase();
+        const responseLower = (data.response || "").toLowerCase();
+        // RESET filters to defaults first
+        const newFilters: any = {
+          selectedProviders: ["AWS", "Azure", "GCP"],
+          selectedServices: [],
+          chartType: "area",
+          viewMode: "chart"
+        };
+
+        // Service grouping by provider
+        const servicesByProvider: Record<string, string[]> = {
+          AWS: ["EC2", "S3", "Lambda"],
+          Azure: ["Virtual Machines", "Blob Storage", "Azure Functions"],
+          GCP: ["Compute Engine", "Cloud Storage", "Cloud Functions"]
+        };
+
+        // Detect provider filters from query - check for specific provider mentions
+        const hasAWS = queryLower.includes("aws");
+        const hasAzure = queryLower.includes("azure");
+        const hasGCP = queryLower.includes("gcp") || queryLower.includes("google");
+        const hasCompare = queryLower.includes("compare") || queryLower.includes("all");
+
+        // If specific provider mentioned (not comparing), filter to that provider only
+        if (hasAzure && !hasAWS && !hasGCP && !hasCompare) {
+          newFilters.selectedProviders = ["Azure"];
+          newFilters.selectedServices = servicesByProvider.Azure;
+        } else if (hasAWS && !hasAzure && !hasGCP && !hasCompare) {
+          newFilters.selectedProviders = ["AWS"];
+          newFilters.selectedServices = servicesByProvider.AWS;
+        } else if (hasGCP && !hasAWS && !hasAzure && !hasCompare) {
+          newFilters.selectedProviders = ["GCP"];
+          newFilters.selectedServices = servicesByProvider.GCP;
+        }
+        // If comparing or mentioning multiple, show all
+        else {
+          newFilters.selectedProviders = ["AWS", "Azure", "GCP"];
+          newFilters.selectedServices = [...servicesByProvider.AWS, ...servicesByProvider.Azure, ...servicesByProvider.GCP];
+        }
+
+        // Detect service filters from both query and AI response
+        const allServices = ["EC2", "S3", "Lambda", "Virtual Machines", "Blob Storage", "Azure Functions", "Compute Engine", "Cloud Storage", "Cloud Functions"];
+
+        // First check if specific services are mentioned in query
+        let matchedServices = allServices.filter(service =>
+          queryLower.includes(service.toLowerCase())
+        );
+
+        // If no services in query, check AI response for service mentions
+        if (matchedServices.length === 0 && responseLower) {
+          const servicesInResponse = allServices.filter(service =>
+            responseLower.includes(service.toLowerCase())
+          );
+
+          // If "most expensive" or similar analysis in query, focus on the primary service mentioned
+          if ((queryLower.includes("most expensive") || queryLower.includes("expensive") || queryLower.includes("top")) && servicesInResponse.length > 0) {
+            // Take only the first mentioned service (likely the most expensive one)
+            matchedServices = [servicesInResponse[0]];
+
+            // Also filter to the correct provider for this service
+            for (const [provider, providerServices] of Object.entries(servicesByProvider)) {
+              if (providerServices.includes(servicesInResponse[0])) {
+                newFilters.selectedProviders = [provider];
+                break;
+              }
+            }
+          } else if (servicesInResponse.length > 0) {
+            // For other queries, show all mentioned services
+            matchedServices = servicesInResponse;
+          }
+        }
+
+        // Apply matched services to filters
+        if (matchedServices.length > 0) {
+          newFilters.selectedServices = matchedServices;
+        }
+
+        // Detect time period from query
+        if (queryLower.includes("last month")) {
+          newFilters.preset = "last_month";
+        } else if (queryLower.includes("this month")) {
+          newFilters.preset = "this_month";
+        } else if (queryLower.includes("last week")) {
+          newFilters.preset = "last_week";
+        } else if (queryLower.includes("this week")) {
+          newFilters.preset = "this_week";
+        }
+
+        // Detect chart type from query
+        if (queryLower.includes("bar chart") || queryLower.includes("bar graph")) {
+          newFilters.chartType = "bar";
+          newFilters.viewMode = "chart";
+        } else if (queryLower.includes("line chart") || queryLower.includes("line graph")) {
+          newFilters.chartType = "line";
+          newFilters.viewMode = "chart";
+        } else if (queryLower.includes("area chart") || queryLower.includes("area graph")) {
+          newFilters.chartType = "area";
+          newFilters.viewMode = "chart";
+        } else if (queryLower.includes("table") || queryLower.includes("tabular")) {
+          newFilters.viewMode = "table";
+        }
+
+        setFinopsFilters(newFilters);
+
+        return {
+          success: true,
+          response: data.response,
+          data: data.data,
+          recommendations: data.recommendations
+        };
+      } catch (error) {
+        return { success: false, error: String(error) };
+      }
+    },
+  });
+
   // Handle form submission
   const handleCreateTicket = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -133,7 +453,13 @@ export default function Home() {
       case "tickets":
         return <TicketManagement onBack={() => setCurrentView("dashboard")} tickets={tickets} setTickets={setTickets} />;
       case "finops":
-        return <FinOps onBack={() => setCurrentView("dashboard")} />;
+        return (
+          <FinOps
+            onBack={() => setCurrentView("dashboard")}
+            externalFilters={finopsFilters}
+            onFiltersChange={setFinopsFilters}
+          />
+        );
       case "greenops":
         return <GreenOps onBack={() => setCurrentView("dashboard")} />;
       default:
@@ -192,6 +518,7 @@ export default function Home() {
         <DashboardLayout
           userName={userState.name || 'User'}
           userRole={userState.role}
+          currentView={currentView}
           onCustomizeDashboard={() => setShowCustomizeModal(true)}
         >
           {renderContent()}
@@ -217,9 +544,9 @@ export default function Home() {
         </div>
 
         {/* Copilot Chat - Scrollable Area */}
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-hidden flex flex-col relative">
           <CopilotChat
-            className="h-full overflow-y-auto"
+            className="flex-1 overflow-y-auto"
             instructions={`You are Jarvis, an AI assistant for a comprehensive operations platform.
 
 Jarvis has three main features:
@@ -231,10 +558,15 @@ Jarvis has three main features:
    - IMPORTANT: When users ask to create a ticket, use the openCreateTicketForm() action to open a form
    - Use getAllTickets() to retrieve tickets
 
-2. **FinOps** (Coming Soon):
+2. **FinOps** (Now Available):
    - Financial operations and cloud cost management
+   - View costs by provider (AWS, Azure, GCP) and services
+   - Query costs using natural language
    - Budget optimization and tracking
-   - Currently under development
+   - Use navigateToFinOps() to open the FinOps dashboard
+   - Use showCostSummary() to display visual cost cards for a specific provider or combined total
+   - Use compareProviders() to show a visual comparison across all cloud providers
+   - Use queryFinOpsCosts() for detailed text-based cost analysis
 
 3. **GreenOps** (Coming Soon):
    - Sustainable operations and environmental monitoring
@@ -242,14 +574,87 @@ Jarvis has three main features:
    - Energy usage optimization
    - Currently under development
 
-Help users navigate between features, create tickets, and understand what Jarvis offers. Be friendly, professional, and concise. When users ask about FinOps or GreenOps, let them know these features are coming soon.
+Help users navigate between features, create tickets, analyze cloud costs, and understand what Jarvis offers. Be friendly, professional, and concise.
+
+When users ask about FinOps or costs:
+- Use navigateToFinOps() to navigate to the FinOps page
+- Use queryFinOpsCosts() to answer specific cost questions
+- Provide helpful suggestions for cost queries
+
+When users ask about GreenOps, let them know this feature is coming soon.
 
 IMPORTANT: When users ask to create a ticket, ALWAYS use openCreateTicketForm() action to open the form.`}
             labels={{
               title: "Jarvis Assistant",
-              initial: "Hi! I'm Jarvis, your AI operations assistant. I can help you with:\n\n• Create & view tickets (just ask me!)\n• Learn about FinOps & GreenOps (coming soon)\n• Navigate between features\n\nWhat would you like to do?",
+              initial: "Hi! I'm Jarvis, your AI operations assistant. I can help you with:\n\n• Create & view tickets\n• Analyze cloud costs with visual cards (try: 'show me AWS costs')\n• Compare provider spending with charts\n• Get cost optimization recommendations\n• Navigate between features\n\nI can display interactive cost cards and visualizations right here in the chat!\n\nWhat would you like to do?",
             }}
           />
+
+          {/* Quick Actions - Inline pills just above text input (like reference image) */}
+          {currentView === "finops" && (
+            <div className="flex-none px-4 py-2 bg-gray-900 border-t border-gray-700">
+              <div className="flex flex-wrap gap-2">
+                {[
+                  "Show costs last month",
+                  "Compare all providers",
+                  "Most expensive service",
+                  "Optimization tips",
+                  "Cost by service",
+                  "Budget recommendations"
+                ].map((query, index) => (
+                  <button
+                    key={index}
+                    onClick={() => {
+                      console.log("Quick action clicked:", query);
+
+                      // Service grouping by provider
+                      const servicesByProvider: Record<string, string[]> = {
+                        AWS: ["EC2", "S3", "Lambda"],
+                        Azure: ["Virtual Machines", "Blob Storage", "Azure Functions"],
+                        GCP: ["Compute Engine", "Cloud Storage", "Cloud Functions"]
+                      };
+
+                      // Reset and apply new filters
+                      const queryLower = query.toLowerCase();
+                      const newFilters: any = {
+                        selectedProviders: ["AWS", "Azure", "GCP"],
+                        selectedServices: [...servicesByProvider.AWS, ...servicesByProvider.Azure, ...servicesByProvider.GCP],
+                        chartType: "area",
+                        viewMode: "chart"
+                      };
+
+                      // Apply filters based on query
+                      if (queryLower.includes("compare") || queryLower.includes("all")) {
+                        newFilters.selectedProviders = ["AWS", "Azure", "GCP"];
+                        newFilters.selectedServices = [...servicesByProvider.AWS, ...servicesByProvider.Azure, ...servicesByProvider.GCP];
+                      }
+                      if (queryLower.includes("last month")) {
+                        newFilters.preset = "last_month";
+                      }
+
+                      setFinopsFilters(newFilters);
+
+                      // Fetch AI response and update
+                      fetch("http://localhost:8000/api/finops/ai/query", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ query }),
+                      })
+                        .then(res => res.json())
+                        .then(data => {
+                          console.log("✅ Filters applied!");
+                          console.log("AI Response:", data.response);
+                        })
+                        .catch(err => console.error("Error:", err));
+                    }}
+                    className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs rounded-full border border-gray-700 hover:border-gray-600 transition-all"
+                  >
+                    {query}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

@@ -6,6 +6,7 @@ interface DashboardLayoutProps {
   children: React.ReactNode;
   userName: string;
   userRole: string;
+  currentView?: string;
   onCustomizeDashboard?: () => void;
 }
 
@@ -13,6 +14,7 @@ export default function DashboardLayout({
   children,
   userName,
   userRole,
+  currentView,
   onCustomizeDashboard,
 }: DashboardLayoutProps) {
   const navItems = [
@@ -116,6 +118,7 @@ export default function DashboardLayout({
         <TopBar
           userName={userName}
           userRole={userRole}
+          currentView={currentView}
           onCustomizeDashboard={onCustomizeDashboard}
         />
 

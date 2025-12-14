@@ -51,7 +51,7 @@ export const products: Product[] = [
     name: 'FinOps',
     description: 'Optimize cloud costs & manage financial operations',
     icon: 'credit-card',
-    status: 'coming-soon',
+    status: 'available',
     route: '/finops',
   },
   {
